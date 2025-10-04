@@ -24,10 +24,40 @@
 """
 
 import csv
+import re
 from pathlib import Path
 from typing import Optional
 
 import click
+
+
+def normalize_api_request(request: str, method: str | None = None) -> str:
+    """
+    Нормализовать API запрос для гибкого сравнения
+
+    1. Убирает HTTP метод из начала строки (если он там есть)
+    2. Заменяет ID аккаунтов после "/accounts/" на "<some_id>"
+
+    Args:
+        request: API запрос (может начинаться с HTTP метода или сразу с пути)
+        method: HTTP метод (если известен отдельно)
+
+    Returns:
+        Нормализованный запрос
+    """
+    # Если метод указан отдельно, убираем его из начала request если он там есть
+    if method and request.upper().startswith(method.upper()):
+        request = request[len(method):].lstrip()
+
+    # Убираем HTTP метод из начала строки, если он там есть
+    # Паттерн: METHOD /path (где METHOD - слово из заглавных букв)
+    method_pattern = r"^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+"
+    request = re.sub(method_pattern, "", request, flags=re.IGNORECASE).lstrip()
+
+    # Заменяем ID аккаунтов на плейсхолдер
+    # Паттерн: /accounts/{любой_ид}/ на /accounts/<some_id>/
+    account_pattern = r"/accounts/[^/]+/"
+    return re.sub(account_pattern, "/accounts/<some_id>/", request)
 
 
 def load_csv(file_path: Path) -> dict[str, dict[str, str]]:
@@ -81,8 +111,12 @@ def calculate_accuracy(
         true_request = true_data["request"]
         pred_request = pred_data["request"]
 
+        # Нормализуем запросы для гибкого сравнения
+        true_request_norm = normalize_api_request(true_request, true_type)
+        pred_request_norm = normalize_api_request(pred_request, pred_type)
+
         type_match = true_type == pred_type
-        request_match = true_request == pred_request
+        request_match = true_request_norm == pred_request_norm
 
         if type_match:
             correct_type += 1
@@ -99,8 +133,10 @@ def calculate_accuracy(
                 "error": "mismatch",
                 "true_type": true_type,
                 "true_request": true_request,
+                "true_request_norm": true_request_norm,
                 "pred_type": pred_type,
                 "pred_request": pred_request,
+                "pred_request_norm": pred_request_norm,
                 "type_match": "yes" if type_match else "no",
                 "request_match": "yes" if request_match else "no",
             })
@@ -233,6 +269,10 @@ def main(pred_file: Path, true_file: Path, show_errors: int, save_errors: Option
                     click.echo("   Request: ✗")
                     click.echo(f"     Predicted: {error['pred_request']}")
                     click.echo(f"     Expected:  {error['true_request']}")
+                    click.echo(
+                        f"     After norm: pred='{error.get('pred_request_norm', 'N/A')}' "
+                        f"expected='{error.get('true_request_norm', 'N/A')}'"
+                    )
                 else:
                     click.echo(f"   Request: ✓ {error['true_request']}")
 
@@ -249,6 +289,8 @@ def main(pred_file: Path, true_file: Path, show_errors: int, save_errors: Option
                 "pred_type",
                 "true_request",
                 "pred_request",
+                "true_request_norm",
+                "pred_request_norm",
                 "type_match",
                 "request_match",
             ]
@@ -263,6 +305,8 @@ def main(pred_file: Path, true_file: Path, show_errors: int, save_errors: Option
                     "pred_type": error.get("pred_type", ""),
                     "true_request": error.get("true_request", ""),
                     "pred_request": error.get("pred_request", ""),
+                    "true_request_norm": error.get("true_request_norm", ""),
+                    "pred_request_norm": error.get("pred_request_norm", ""),
                     "type_match": error.get("type_match", ""),
                     "request_match": error.get("request_match", ""),
                 })

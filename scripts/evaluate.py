@@ -7,7 +7,37 @@
 """
 
 import csv
+import re
 from pathlib import Path
+
+
+def normalize_api_request(request: str, method: str | None = None) -> str:
+    """
+    Нормализовать API запрос для гибкого сравнения
+
+    1. Убирает HTTP метод из начала строки (если он там есть)
+    2. Заменяет ID аккаунтов после "/accounts/" на "<some_id>"
+
+    Args:
+        request: API запрос (может начинаться с HTTP метода или сразу с пути)
+        method: HTTP метод (если известен отдельно)
+
+    Returns:
+        Нормализованный запрос
+    """
+    # Если метод указан отдельно, убираем его из начала request если он там есть
+    if method and request.upper().startswith(method.upper()):
+        request = request[len(method):].lstrip()
+
+    # Убираем HTTP метод из начала строки, если он там есть
+    # Паттерн: METHOD /path (где METHOD - слово из заглавных букв)
+    method_pattern = r"^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+"
+    request = re.sub(method_pattern, "", request, flags=re.IGNORECASE).lstrip()
+
+    # Заменяем ID аккаунтов на плейсхолдер
+    # Паттерн: /accounts/{любой_ид}/ на /accounts/<some_id>/
+    account_pattern = r"/accounts/[^/]+/"
+    return re.sub(account_pattern, "/accounts/<some_id>/", request)
 
 
 def load_csv_data(file_path: str) -> dict[str, dict[str, str]]:
@@ -139,9 +169,13 @@ def calculate_accuracy(submission: dict[str, dict], ground_truth: dict[str, dict
         true_request = true_data.get("request", "")
         pred_request = pred_data.get("request", "")
 
-        # Точное совпадение строк
+        # Нормализуем запросы для гибкого сравнения
+        true_request_norm = normalize_api_request(true_request, true_type)
+        pred_request_norm = normalize_api_request(pred_request, pred_type)
+
+        # Точное совпадение строк после нормализации
         type_match = true_type == pred_type
-        request_match = true_request == pred_request
+        request_match = true_request_norm == pred_request_norm
 
         if type_match:
             correct_type += 1
