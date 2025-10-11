@@ -2,14 +2,20 @@
 Чтобы полностью подготовить проект для генерации с помощью Aider, добавьте следующие файлы в чат (они нужны   
 для реализации и тестирования):                                                                                                                                                                   
 
- • plan.md: Сгенерируйте его с помощью Grok-4 (на основе prompt.for.creation.plan.md) и добавьте. Это основа – Aider использует его для генерации модулей и архитектуры.                          
+ • plan.md: Сгенерируйте его с помощью Grok-4 (на основе prompt.for.creation.plan.md) и добавьте.
+   Это основа – Aider использует его для генерации модулей и архитектуры.                          
  • data/processed/train.csv: Уже добавлен ранее, но подтвердите для few-shot обучения.                                                                                                            
  • data/processed/test.csv: Уже добавлен ранее, нужен для генерации submission.csv.                                                                                                               
- • src/app/adapters/finam_client.py: Реализуйте в Aider (async клиент для Finam API с retry, кэшированием и подтверждениями для POST/DELETE).                                                     
+ • src/app/adapters/finam_client.py: Реализуйте в Aider (async клиент для Finam API с retry, 
+   кэшированием и подтверждениями для POST/DELETE).                                                     
  • src/app/core/llm.py: Реализуйте в Aider (интеграция с OpenRouter для парсинга вопросов).                                                                                                       
  • src/app/interfaces/chat_app.py: Реализуйте в Aider (Streamlit UI с Plotly для графиков и таблиц).                                                                                              
  • scripts/generate_submission.py: Реализуйте в Aider (LLM → submission.csv с точностью >85%).                                                                                                    
  • scripts/calculate_metrics.py: Реализуйте в Aider (расчет accuracy на train/test).                                                                                                              
 
-После добавления этих файлов запустите Aider с plan.md для генерации кода. Проект будет соответствовать требованиям хакатона (точность API, безопасность, визуализация). Если нужны шаблоны для   
-plan.md или других, сгенерируйте их и добавьте.        
+После добавления этих файлов запустите Aider с plan.md для генерации кода. Проект будет 
+соответствовать требованиям хакатона (точность API, безопасность, визуализация). 
+Если нужны шаблоны для   
+plan.md или других, сгенерируйте их и добавьте.       
+
+/add plan.md data/processed/train.csv data/processed/test.csv /data/processed/submission.csv src/app/adapters/finam_client.py src/app/core/llm.py src/app/interfaces/chat_app.py scripts/generate_submission.py scripts/calculate_metrics.py example.docs/create/prompt.for.creation.plan.md
