@@ -1,4 +1,4 @@
-# План Проекта [TRADER] LLM-Interface to Finam Trade API
+# План Проекта [TRADER] LLM-Interface to Finam Trade API (Финальная Версия)
 
 ## Обзор
 **Цель**: Создать AI-ассистент трейдера, преобразующий запросы на естественном языке в вызовы Finam Trade API, с аналитикой и визуализацией (Plotly). Хакатон Finam x HSE (3-5 октября 2025).  
@@ -8,7 +8,7 @@
 **Сроки**: 3-4 октября — кодинг; 5 октября — питч (топ-20 по LB).
 
 ## Архитектура
-**Структура проекта**:
+**Структура проекта** (Исправлено: Убраны дубликаты, добавлены скрипты для метрик):
 - `adapters/`: finam_client.py (FinamPy, async gRPC/REST, JWT/retry).
 - `core/`: llm.py (TradingIntent для парсинга, LLMProcessor для OpenRouter).
 - `interfaces/`: chat_app.py (Streamlit чат, Plotly визуализация).
