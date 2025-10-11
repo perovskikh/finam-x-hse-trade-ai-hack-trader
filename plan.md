@@ -18,7 +18,7 @@
 **Ключевые классы**:
 - `FinamClient`: Обертка API (GetPortfolios, GetBars, NewOrder; retry tenacity).
 - `TradingIntent`: Few-shot парсинг запросов (train.csv; извлечение тикер/account_id).
-- `LLMProcessor`: Интеграция с grok-4/grok-code-fast-1 (OpenRouter; CoT для API-вызовов).
+- `LLMProcessor`: Интеграция с grok-4/grok-code-fast-1 (OpenRouter; CoT для API-вызовов)
 
 **Зависимости**:
 | Библиотека | Назначение |
@@ -31,7 +31,7 @@
 | openrouter | LLM (grok-4) |
 
 **API-методы (MVP)**:
-- AccountsService: GET /v1/accounts/{account_id} (портфель).
+- AccountsService: GET /v1/accounts/{account_id} (портфель)
 - MarketDataService: GET /v1/instruments/{symbol}/bars (свечи).
 - AssetsService: GET /v1/assets/{symbol} (параметры).
 - Orders: POST /v1/accounts/{account_id}/orders (ордера, с подтверждением).
@@ -40,7 +40,7 @@
 **Этап 1: Анализ данных (3 октября, утро)**:
 - Изучить train.csv/test.csv (примеры: "Покажи портфель" → GET /v1/portfolios).
 - Обработать edge cases (YDEX@TQBR вместо YNDX; "no data" для trades).
-- Настроить Aider (.aider.conf.yml; модели grok-4 для плана, grok-code-fast-1 для кода).
+- Настроить Aider (.aider.conf.yml; модели grok-4 для плана, grok-code-fast-1 для кода)
 
 **Этап 2: Архитектура и MVP (3-4 октября, день)**:
 - Реализовать FinamClient (async вызовы, JWT refresh, retry 500/503).
@@ -50,7 +50,7 @@
 - Generate_submission: LLM → uid/type/request (accuracy >85%).
 
 **Этап 3: Кейсы и визуализация (4 октября, вечер)**:
-- Портфельный аналитик: GetPortfolios → sunburst (Plotly) + ребалансировка.
+- Портфельный аналитик: GetPortfolios → sunburst (Plotly) + ребалансировка
 - Сканер рынка: GetAssets + GetBars → таблица со sparklines.
 - Песочница: GetBars → бэктест (график сделок + кривая доходности).
 - Тестирование: calculate_metrics.py на test.csv; демо (AAPL@XNYS).
@@ -60,7 +60,7 @@
 - Питч: QR/видео демо (MVP + 1 кейс); архитектура; планы (расширение на реальные счета).
 
 ## Риски и Митigation
-- **Риск**: Ошибки демо (нет trades) — Мит: Симулировать "no data"; фокус на условных ордерах.
+- **Риск**: Ошибки демо (нет trades) — Мит: Симулировать "no data"; фокус на условных ордерах
 - **Риск**: Лимиты API ($10 OpenRouter) — Мит: Тестировать на grok-code-fast-1; кэширование.
 - **Риск**: Неточность LLM — Мит: Few-shot из train.csv; CoT в промпте.
 - **Риск**: Платформа LB — Мит: Локальные тесты (calculate_metrics.py); 50 сабмитов/день.
@@ -150,7 +150,7 @@
 **Ключевые Классы**:
 - `FinamClient`: Обертка API с retry/JWT.
 - `TradingIntent`: Извлечение параметров из текста.
-- `LLMProcessor`: Интеграция с grok-4/grok-code-fast-1.
+- `LLMProcessor`: Интеграция с grok-4/grok-code-fast-1
 
 **Зависимости (Основные)**:
 - FinamPy: API-клиент.
