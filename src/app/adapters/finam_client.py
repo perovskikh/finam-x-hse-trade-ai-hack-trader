@@ -340,3 +340,133 @@ class FinamAPIClient:
     def get_session_details(self) -> dict[str, Any]:
         """Получить детали текущей сессии"""
         return self.execute_request("POST", "/v1/sessions/details")
+"""
+Finam API Client для асинхронных вызовов к Finam Trade API.
+
+Использует FinamPy для gRPC/REST, tenacity для retry (500/503),
+кэширование для GetAssets, JWT refresh каждые 15 мин.
+"""
+import asyncio
+import logging
+from datetime import datetime, timedelta
+from functools import lru_cache
+from typing import Any, Dict, List, Optional
+
+import tenacity
+from finam import FinamPy  # Предполагается установка FinamPy
+
+from src.app.core.config import get_settings
+
+logger = logging.getLogger(__name__)
+
+
+class FinamClient:
+    """Клиент для Finam Trade API с async и retry."""
+
+    def __init__(self):
+        self.settings = get_settings()
+        self.client = FinamPy(
+            token=self.settings.finam_token,
+            client_id=self.settings.finam_client_id,
+        )
+        self._jwt_expires_at = datetime.now() + timedelta(minutes=15)  # Инициализация JWT
+
+    async def _refresh_jwt_if_needed(self):
+        """Обновить JWT если истекло (каждые 15 мин)."""
+        if datetime.now() >= self._jwt_expires_at:
+            # Логика обновления JWT из FinamPy
+            await self.client.refresh_token()
+            self._jwt_expires_at = datetime.now() + timedelta(minutes=15)
+            logger.info("JWT refreshed")
+
+    @tenacity.retry(
+        stop=tenacity.stop_after_attempt(3),
+        wait=tenacity.wait_exponential(multiplier=1, min=4, max=10),
+        retry=tenacity.retry_if_exception_type((ConnectionError, TimeoutError)),
+    )
+    async def get_assets(self, symbol: str) -> Dict[str, Any]:
+        """Получить информацию об инструменте (кэшировано)."""
+        await self._refresh_jwt_if_needed()
+        # Используем кэширование для GetAssets, как указано в plan.md
+        return await self._cached_get_assets(symbol)
+
+    @lru_cache(maxsize=128)
+    async def _cached_get_assets(self, symbol: str) -> Dict[str, Any]:
+        """Кэшированная версия GetAssets."""
+        try:
+            response = await self.client.get_assets(symbol=symbol)
+            return response
+        except Exception as e:
+            if "404" in str(e) or "Not Found" in str(e):
+                logger.warning(f"Asset {symbol} not found")
+                return {"error": "Not Found"}
+            raise
+
+    @tenacity.retry(
+        stop=tenacity.stop_after_attempt(3),
+        wait=tenacity.wait_exponential(multiplier=1, min=4, max=10),
+    )
+    async def get_quotes_latest(self, symbol: str) -> Dict[str, Any]:
+        """Получить последнюю котировку."""
+        await self._refresh_jwt_if_needed()
+        try:
+            response = await self.client.get_quotes_latest(symbol=symbol)
+            return response
+        except Exception as e:
+            if "no data" in str(e).lower():
+                return {"error": "no data"}
+            raise
+
+    @tenacity.retry(
+        stop=tenacity.stop_after_attempt(3),
+        wait=tenacity.wait_exponential(multiplier=1, min=4, max=10),
+    )
+    async def get_bars(
+        self,
+        symbol: str,
+        timeframe: str,
+        start: datetime,
+        end: datetime,
+    ) -> List[Dict[str, Any]]:
+        """Получить исторические свечи (async для производительности)."""
+        await self._refresh_jwt_if_needed()
+        # Форматируем параметры согласно Finam API спецификации из docs/create
+        params = {
+            "securityBoard": symbol.split('@')[1],
+            "securityCode": symbol.split('@')[0],
+            "timeFrame": timeframe,
+            "intervalFrom": start.isoformat(),
+            "intervalTo": end.isoformat(),
+        }
+        try:
+            response = await self.client.get_day_candles(params)
+            return response
+        except Exception as e:
+            if "no data" in str(e).lower():
+                return []
+            raise
+
+    @tenacity.retry(
+        stop=tenacity.stop_after_attempt(3),
+        wait=tenacity.wait_exponential(multiplier=1, min=4, max=10),
+    )
+    async def create_order(
+        self, account_id: str, order_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Создать ордер (с подтверждением в интерфейсе)."""
+        await self._refresh_jwt_if_needed()
+        # Подтверждение обрабатывается в интерфейсе, здесь только вызов
+        response = await self.client.create_order(account_id=account_id, **order_data)
+        return response
+
+    @tenacity.retry(
+        stop=tenacity.stop_after_attempt(3),
+        wait=tenacity.wait_exponential(multiplier=1, min=4, max=10),
+    )
+    async def cancel_order(self, account_id: str, order_id: str) -> Dict[str, Any]:
+        """Отменить ордер."""
+        await self._refresh_jwt_if_needed()
+        response = await self.client.cancel_order(account_id=account_id, order_id=order_id)
+        return response
+
+    # Добавить другие методы по мере необходимости (GetPortfolios, SubscribeQuote async)
