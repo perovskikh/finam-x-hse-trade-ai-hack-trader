@@ -174,7 +174,7 @@ def test_create_prompt_structure(train_examples):
     assert "Ответ (только HTTP метод и путь, без объяснений):" in prompt
 
 
-def test_end_to_end_generation(settings, train_examples):
+def test_end_to_end_generation(settings):
     """Энд-to-end тест: вопрос → промпт → LLM → парсинг"""
     question = "Покажи котировку Газпрома"
     expected_type = "GET"
@@ -195,17 +195,22 @@ def test_end_to_end_generation(settings, train_examples):
 @pytest.mark.skipif(not Path("data/processed/train.csv").exists(), reason="train.csv not found")
 def test_batch_processing_accuracy():
     """Тест батчевой обработки на подмножестве train.csv"""
-    train_file = Path("data/processed/train.csv")
-    examples = load_train_examples(train_file, num_examples=10)
+    # Фиксированные тестовые случаи
+    test_cases = [
+        {"type": "GET", "request": "GET /v1/instruments/SBER@MISX/quotes/latest"},
+        {"type": "DELETE", "request": "DELETE /v1/accounts/{account_id}/orders/ORD789789"},
+        {"type": "POST", "request": "POST /v1/accounts/{account_id}/orders"},
+        {"type": "GET", "request": "GET /v1/assets/VTBR@MISX"},
+        {"type": "GET", "request": "/v1/exchanges"}
+    ]
     
     correct = 0
-    total = min(5, len(examples))
+    total = len(test_cases)
     
-    for i, example in enumerate(examples[:5]):  # Тестируем на 5 примерах
-        expected_type = example["type"]
-        expected_request = example["request"]
+    for case in test_cases:
+        expected_type = case["type"]
+        expected_request = case["request"]
         
-        # Создаем ожидаемый llm_answer для теста парсинга
         llm_answer = f'{{"type": "{expected_type}", "request": "{expected_request}"}}'
         
         method, request = parse_llm_response(llm_answer)
