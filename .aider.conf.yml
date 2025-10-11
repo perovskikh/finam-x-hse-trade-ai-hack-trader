@@ -73,3 +73,20 @@ read:
   - src/app/interfaces/chat_app.py  # Существующий: Streamlit UI
   - .aider.model.settings.yml       # Существующий: настройки моделей
   - example.docs/create/  # файлы для генерации проекта и справки
+
+  # Контекстные файлы для чтения
+read:
+  - docs/data.md             # Существующий: данные хакатона
+  - docs/evaluation.md       # Существующий: метрики оценки
+  - docs/task.md             # Существующий: задание хакатона
+  - plan.md                  # Существующий: план проекта
+  - data/processed/train.csv # Существующий: обучающие данные
+  - data/processed/test.csv  # Существующий: тестовые данные
+  - scripts/generate_submission.py  # Существующий: генерация submission
+  - scripts/calculate_metrics.py    # Существующий: расчёт метрик
+  - src/app/adapters/finam_client.py  # Существующий: клиент API
+  - src/app/core/llm.py             # Существующий: LLM-интеграция
+  - src/app/interfaces/chat_app.py  # Существующий: Streamlit UI
+  - .aider.model.settings.yml       # Существующий: настройки моделей
+  - example.docs/create/  # файлы для генерации проекта и справки реализации plan.md
+
