@@ -3,6 +3,10 @@
 https://tradeapi.finam.ru/
 """
 
+import asyncio
+from datetime import datetime, timedelta
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+
 import os
 from typing import Any
 
@@ -27,13 +31,29 @@ class FinamAPIClient:
         self.access_token = access_token or os.getenv("FINAM_ACCESS_TOKEN", "")
         self.base_url = base_url or os.getenv("FINAM_API_BASE_URL", "https://api.finam.ru")
         self.session = requests.Session()
+        self.jwt_expiry = datetime.now() + timedelta(minutes=15)  # Инициализация для refresh
 
         if self.access_token:
             self.session.headers.update({
-                "Authorization": f"Bearer {self.access_token}",
+                "Authorization": self.access_token,  # No "Bearer" prefix for Finam API
                 "Content-Type": "application/json",
             })
 
+    async def refresh_jwt(self):
+        """Асинхронное обновление JWT токена каждые 15 мин"""
+        # Логика refresh (используйте Finam API для /v1/sessions)
+        response = await asyncio.to_thread(self.execute_request, "POST", "/v1/sessions")
+        if "access_token" in response:
+            self.access_token = response["access_token"]
+            self.session.headers["Authorization"] = self.access_token  # No "Bearer"
+            self.jwt_expiry = datetime.now() + timedelta(minutes=15)
+        return response
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=4, max=10),
+        retry=retry_if_exception_type(requests.HTTPError)
+    )
     def execute_request(self, method: str, path: str, **kwargs: Any) -> dict[str, Any]:  # noqa: ANN401
         """
         Выполнить HTTP запрос к Finam TradeAPI
@@ -42,6 +62,11 @@ class FinamAPIClient:
             method: HTTP метод (GET, POST, DELETE и т.д.)
             path: Путь API (например, /v1/instruments/SBER@MISX/quotes/latest)
             **kwargs: Дополнительные параметры для requests
+        # Критически важно: Подтверждение для POST/DELETE
+        if method in ["POST", "DELETE"]:
+            confirm = input(f"[БЕЗОПАСНОСТЬ] Подтвердите операцию: {method} {path} (да/нет): ")
+            if confirm.lower() != "да":
+                return {"status": "cancelled", "message": "Операция отменена"}
 
         Returns:
             Ответ API в виде словаря
@@ -50,16 +75,21 @@ class FinamAPIClient:
             requests.HTTPError: Если запрос завершился с ошибкой
         """
         url = f"{self.base_url}{path}"
+        # Проверка JWT expiry
+        if datetime.now() > self.jwt_expiry:
+            asyncio.run(self.refresh_jwt())
 
         try:
-            response = self.session.request(method, url, timeout=30, **kwargs)
-            response.raise_for_status()
+            resp = self.session.request(method, url, timeout=30, **kwargs)
+            if resp.status_code in [500, 503]:
+                raise requests.HTTPError("Retryable error")
+            resp.raise_for_status()
 
             # Если ответ пустой (например, для DELETE)
-            if not response.content:
+            if not resp.content:
                 return {"status": "success", "message": "Operation completed"}
 
-            return response.json()
+            return resp.json()
 
         except requests.exceptions.HTTPError as e:
             # Пытаемся извлечь детали ошибки из ответа
@@ -96,6 +126,11 @@ class FinamAPIClient:
         if end:
             params["interval.end_time"] = end
         return self.execute_request("GET", f"/v1/instruments/{symbol}/bars", params=params)
+
+    # Метод по train.csv: "Покажи мой портфель" → GET /v1/portfolios (но в API это /v1/accounts/{account_id})
+    async def get_portfolios(self, account_id: str) -> dict[str, Any]:
+        """Получить портфель (позиции) по счету"""
+        return await asyncio.to_thread(self.execute_request, "GET", f"/v1/accounts/{account_id}")
 
     def get_account(self, account_id: str) -> dict[str, Any]:
         """Получить информацию о счете"""

@@ -119,30 +119,40 @@ TIME_FRAME_H1, TIME_FRAME_H4, TIME_FRAME_D, TIME_FRAME_W, TIME_FRAME_MN
 def parse_llm_response(response: str) -> tuple[str, str]:
     """Парсинг ответа LLM в (type, request)"""
     response = response.strip()
+    import json  # Для structured output
+    try:
+        parsed = json.loads(response)
+        return parsed.get("type", "GET"), parsed.get("request", "/v1/assets")
+    except json.JSONDecodeError:
+        pass  # Fallback to original parsing
 
-    # Ищем HTTP метод в начале
+    # Ищем HTTP метод в начале или перед путем
     methods = ["GET", "POST", "DELETE", "PUT", "PATCH"]
     method = "GET"  # по умолчанию
     request = response
 
-    for m in methods:
-        if response.upper().startswith(m):
-            method = m
-            request = response[len(m) :].strip()
-            break
+    # Пытаемся найти метод и путь
+    import re
+    pattern = r'\b(GET|POST|DELETE|PUT|PATCH)\s*/'
+    match = re.search(pattern, response, re.IGNORECASE)
+    if match:
+        method = match.group(1).upper()
+        # Извлекаем путь после метода
+        start = match.end()
+        request = response[start:].strip()
+    else:
+        # Fallback: ищем путь
+        path_match = re.search(r'/\S+', response)
+        if path_match:
+            request = path_match.group(0)
 
     # Убираем лишние символы
     request = request.strip()
     if not request.startswith("/"):
-        # Если LLM вернул что-то странное, пытаемся найти путь
-        parts = request.split()
-        for part in parts:
-            if part.startswith("/"):
-                request = part
-                break
+        request = f"/{request}"
 
     # Fallback на безопасный вариант
-    if not request.startswith("/"):
+    if not request.startswith("/v1/"):
         request = "/v1/assets"
 
     return method, request
@@ -195,7 +205,7 @@ def generate_api_call(question: str, examples: list[dict[str, str]], model: str)
     default="data/processed/submission.csv",
     help="Путь к submission.csv",
 )
-@click.option("--num-examples", type=int, default=10, help="Количество примеров для few-shot")
+@click.option("--num-examples", type=int, default=20, help="Количество примеров для few-shot")  # Increase for accuracy
 def main(test_file: Path, train_file: Path, output_file: Path, num_examples: int) -> None:
     """Генерация submission.csv для хакатона"""
     from src.app.core.config import get_settings

@@ -238,7 +238,7 @@ def main(pred_file: Path, true_file: Path, show_errors: int, save_errors: Option
     click.echo(f"   Правильный request:       {stats['correct_request']} ({stats['request_accuracy'] * 100:.2f}%)")
     click.echo(f"   Ошибок:                   {len(stats['errors'])}")
 
-    # Статистика по типам запросов
+    # Статистика по типам запросов (с precision/recall для анализа)
     click.echo("\n📊 СТАТИСТИКА ПО ТИПАМ ЗАПРОСОВ:")
     click.echo(f"   {'Type':<10} {'Precision':<12} {'Recall':<12} {'F1-Score':<12}")
     click.echo(f"   {'-' * 46}")

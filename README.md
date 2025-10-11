@@ -1,4 +1,4 @@
-# \[Trader\] Finam x HSE Trade AI Hack - Baseline
+# [TRADER] Finam x HSE Trade AI Hack - Baseline
 
 > **AI-ассистент трейдера** на базе Finam TradeAPI
 > Базовый шаблон для хакатона по созданию интеллектуального помощника для трейдинга
@@ -12,8 +12,8 @@
 cp .env.example .env
 
 # 2. Отредактируйте .env и добавьте API ключи
-# OPENROUTER_API_KEY=your_key
-# FINAM_ACCESS_TOKEN=your_token (опционально)
+# OPENROUTER_API_KEY=your_key (https://openrouter.ai/)
+# FINAM_ACCESS_TOKEN=your_token (https://tradeapi.finam.ru/docs/tokens/)
 
 # 3. Запустите приложение
 make up
@@ -31,6 +31,7 @@ poetry install
 
 # 2. Настройте .env
 cp .env.example .env
+# Добавьте OPENROUTER_API_KEY и FINAM_ACCESS_TOKEN
 
 # 3. Запустите веб-интерфейс
 poetry run streamlit run src/app/interfaces/chat_app.py
@@ -141,6 +142,13 @@ poetry run calculate-metrics
 ## 🤝 Поддержка
 
 Для вопросов по хакатону обращайтесь к организаторам.
+
+## 📹 Видео/Гиф Демо
+
+Для питча запишите демонстрацию (MVP + 1 кейс, e.g., анализ портфеля):
+1. Запустите: `poetry run streamlit run src/app/interfaces/chat_app.py`
+2. Запишите с OBS Studio (https://obsproject.com/) или аналогом.
+3. Добавьте в презентацию (5 мин: команда/идея, демо, архитектура, планы).
 
 ## 📄 Лицензия
 

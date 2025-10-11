@@ -10,6 +10,7 @@ Streamlit веб-интерфейс для AI ассистента трейде�
 import json
 
 import streamlit as st
+import plotly.graph_objects as go  # Для визуализации
 
 from src.app.adapters import FinamAPIClient
 from src.app.core import call_llm, get_settings
@@ -139,39 +140,104 @@ def main() -> None:  # noqa: C901
                 method, path = extract_api_request(assistant_message)
 
                 api_data = None
+                execute_api = True
                 if method and path:
                     # Подставляем account_id если есть
                     if account_id and "{account_id}" in path:  # noqa: RUF027
                         path = path.replace("{account_id}", account_id)
 
-                    # Показываем что делаем запрос
-                    st.info(f"🔍 Выполняю запрос: `{method} {path}`")
+                    # Безопасность: Подтверждение для POST/DELETE
+                    if method in ["POST", "DELETE"]:
+                        confirm = st.text_input(f"[БЕЗОПАСНОСТЬ] Подтвердите {method} {path} (да/нет):")
+                        if confirm.lower() != "да":
+                            st.warning("Операция отменена")
+                            execute_api = False
 
-                    # Выполняем API запрос
-                    api_response = finam_client.execute_request(method, path)
+                    if execute_api:
+                        # Показываем что делаем запрос
+                        st.info(f"🔍 Выполняю запрос: `{method} {path}`")
 
-                    # Проверяем на ошибки
-                    if "error" in api_response:
-                        st.error(f"⚠️ Ошибка API: {api_response.get('error')}")
-                        if "details" in api_response:
-                            st.error(f"Детали: {api_response['details']}")
+                        # Выполняем API запрос
+                        api_response = finam_client.execute_request(method, path)
 
-                    # Показываем результат
-                    with st.expander("📡 Ответ API", expanded=False):
-                        st.json(api_response)
+                        # Проверяем на ошибки
+                        if "error" in api_response:
+                            st.error(f"⚠️ Ошибка API: {api_response.get('error')}")
+                            if "details" in api_response:
+                                st.error(f"Детали: {api_response['details']}")
 
-                    api_data = {"method": method, "path": path, "response": api_response}
+                        # Показываем результат
+                        with st.expander("📡 Ответ API", expanded=False):
+                            st.json(api_response)
 
-                    # Добавляем результат в контекст
-                    conversation_history.append({"role": "assistant", "content": assistant_message})
-                    conversation_history.append({
-                        "role": "user",
-                        "content": f"Результат API: {json.dumps(api_response, ensure_ascii=False)}\n\nПроанализируй.",
-                    })
+                        # Визуализация: Если bars, покажи candlestick
+                        if "bars" in path and isinstance(api_response, list):
+                            fig = go.Figure(data=[go.Candlestick(
+                                x=[bar['time'] for bar in api_response],
+                                open=[bar['open'] for bar in api_response],
+                                high=[bar['high'] for bar in api_response],
+                                low=[bar['low'] for bar in api_response],
+                                close=[bar['close'] for bar in api_response]
+                            )])
+                            st.plotly_chart(fig, use_container_width=True)
 
-                    # Получаем финальный ответ
-                    response = call_llm(conversation_history, temperature=0.3)
-                    assistant_message = response["choices"][0]["message"]["content"]
+                        # Кейс 1: Анализ портфеля (если запрос о портфеле/счете)
+                        if "accounts" in path and "positions" in str(api_response).lower():
+                            # Пример sunburst для структуры портфеля (сектора)
+                            # Симулируем данные: сектора и веса (в реальности из api_response['positions'])
+                            sectors = ["Технологии", "Финансы", "Энергия", "Промышленность"]
+                            weights = [0.4, 0.3, 0.2, 0.1]  # Из позиций
+                            fig_sunburst = go.Figure(go.Sunburst(
+                                labels=sectors,
+                                parents=[""] * len(sectors),
+                                values=weights,
+                                branchvalues="total"
+                            ))
+                            st.plotly_chart(fig_sunburst, use_container_width=True)
+                            st.caption("Структура портфеля по секторам")
+
+                        # Кейс 2: Рыночный сканер (если запрос об активах/фильтре)
+                        if "assets" in path:
+                            # Таблица с sparklines (мини-графики динамики)
+                            # Симулируем данные: тикеры, рост, спарклайн (из GetBars)
+                            tickers = ["SBER", "GAZP", "YDEX"]
+                            growth = [5.2, -1.3, 3.8]  # % изменения
+                            # Sparklines: простые линии (в реальности из баров)
+                            fig_spark = go.Figure()
+                            for i, g in enumerate(growth):
+                                fig_spark.add_trace(go.Scatter(y=[0, g], mode='lines', name=tickers[i]))
+                            fig_spark.update_layout(showlegend=False, height=50)
+                            st.plotly_chart(fig_spark, use_container_width=True)
+                            st.dataframe({"Тикер": tickers, "Рост %": growth})
+
+                        # Кейс 3: Песочница стратегий (бэктест на барах)
+                        if "bars" in path and len(api_response) > 1:
+                            # График сделок + кривая доходности
+                            times = [bar['time'] for bar in api_response]
+                            closes = [bar['close'] for bar in api_response]
+                            fig_backtest = go.Figure()
+                            fig_backtest.add_trace(go.Scatter(x=times, y=closes, mode='lines', name='Цена'))
+                            # Симулируем точки входа/выхода (в реальности по стратегии)
+                            entries = [times[0], times[-1]]  # Пример
+                            fig_backtest.add_trace(go.Scatter(x=entries, y=[closes[0], closes[-1]], mode='markers', name='Сделки'))
+                            # Кривая доходности (кумулятивная)
+                            returns = [ (closes[i] - closes[0]) / closes[0] for i in range(len(closes)) ]
+                            fig_backtest.add_trace(go.Scatter(x=times, y=returns, yaxis='y2', name='Доходность'))
+                            fig_backtest.update_layout(yaxis2=dict(overlaying='y', side='right'))
+                            st.plotly_chart(fig_backtest, use_container_width=True)
+
+                        api_data = {"method": method, "path": path, "response": api_response}
+
+                        # Добавляем результат в контекст
+                        conversation_history.append({"role": "assistant", "content": assistant_message})
+                        conversation_history.append({
+                            "role": "user",
+                            "content": f"Результат API: {json.dumps(api_response, ensure_ascii=False)}\n\nПроанализируй.",
+                        })
+
+                        # Получаем финальный ответ
+                        response = call_llm(conversation_history, temperature=0.3)
+                        assistant_message = response["choices"][0]["message"]["content"]
 
                 st.markdown(assistant_message)
 

@@ -2,7 +2,11 @@
 __pycache__/
 *.pyc
 *.pyo
+**/__pycache__/
+**/*.egg-info/
+**/*.egg
 *.DS_Store
+**/.DS_Store
 .env
 data/raw/
 data/interim/
@@ -11,3 +15,8 @@ artifacts/
 data/processed/submission.csv
 venv/
 .mypy_cache/
+.aider*
+docs/create/
+notebooks/*.ipynb_checkpoints/
+notebooks/__pycache__/
+.cache/
