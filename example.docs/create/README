@@ -18,4 +18,5 @@
 Если нужны шаблоны для   
 plan.md или других, сгенерируйте их и добавьте.       
 
-/add plan.md data/processed/train.csv data/processed/test.csv /data/processed/submission.csv src/app/adapters/finam_client.py src/app/core/llm.py src/app/interfaces/chat_app.py scripts/generate_submission.py scripts/calculate_metrics.py example.docs/create/prompt.for.creation.plan.md
+/add plan.md data/processed/train.csv data/processed/test.csv src/app/adapters/finam_client.py src/app/core/llm.py src/app/interfaces/chat_app.py scripts/generate_submission.py scripts/calculate_metrics.py example.docs/create/prompt.for.creation.plan.md
+aider --file plan.md --model openrouter/x-ai/grok-code-fast-1 --message "Реализуй строго по plan.md"

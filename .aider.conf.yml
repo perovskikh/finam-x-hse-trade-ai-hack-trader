@@ -73,6 +73,9 @@ read:
   - src/app/interfaces/chat_app.py  # Существующий: Streamlit UI
   - .aider.model.settings.yml       # Существующий: настройки моделей
   - example.docs/create/  # файлы для генерации проекта и справки
+  - core/llm.py # для парсинга вопросов (few-shot из train.csv, извлечение тикер/account_id).
+                # Файл новый, diff показывает добавление. Обоснование: строго по plan.md, 
+                #CoT для API-вызовов, интеграция с OpenRouter (grok-4). 
 
   # Контекстные файлы для чтения
 read:

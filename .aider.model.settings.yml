@@ -135,6 +135,25 @@
 - name: openrouter/x-ai/grok-4-fast
   use_repo_map: true
   extra_params:
+    max_tokens: 80000  # Поддержка больших файлов и контекста
+    transforms: ["middle-out"]
+  use_temperature: false
+  reasoning_tag: none  # ❌ Никаких рассуждений — только выполнение
+  accepts_settings:
+    - thinking_tokens
+  system_prompt_prefix:
+    Применяй изменения в коде ТОЛЬКО в формате unified diff.
+    Никаких пояснений, заголовков, markdown, комментариев, примеров или текста вне diff.
+    Не используй ```diff или другие обёртки.
+    Не пиши "Вот изменения:" или подобное.
+    Вывод должен начинаться с "--- filename" и содержать только строки diff.
+    Если не можешь сгенерировать валидный diff — молчи.
+  edit_format: diff
+
+# ✍️ Редактор: ТОЛЬКО правки без рассуждений (для точечных изменений)
+- name: openrouter/openai/gpt-oss-20b
+  use_repo_map: true
+  extra_params:
     max_tokens: 500000  # Поддержка больших файлов и контекста
     transforms: ["middle-out"]
   use_temperature: false
